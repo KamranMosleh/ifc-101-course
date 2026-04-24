@@ -7,7 +7,7 @@ import streamlit.components.v1 as components
 # Streamlit multipage module resolution issues.
 frontend_dir = (Path(__file__).parent.parent / "pages" / "frontend-viewer").absolute()
 _component_func = components.declare_component(
-    "ifc_js_viewer", path=str(frontend_dir)
+    "ifc_js_viewer_final", path=str(frontend_dir)
 )
 
 

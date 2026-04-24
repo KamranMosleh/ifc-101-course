@@ -93,13 +93,13 @@ def draw_side_bar():
         session.ifc_file.write(session.file_name)
     ## Cost Scheduler
     st.sidebar.header("💰 Cost Scheduler")
-    st.sidebar.text_input("✏️ Schedule Name", key="cost_input")
-    st.sidebar.button("➕ Add Schedule", key="add_schedule_button", on_click=add_cost_schedule)
+    st.sidebar.text_input("✏️ Cost Schedule Name", key="cost_input")
+    st.sidebar.button("➕ Add Cost Schedule", key="add_schedule_button", on_click=add_cost_schedule)
 
     ## Work Scheduler
-    st.sidebar.header("📅 Cost Scheduler")
-    st.sidebar.text_input("✏️ Schedule Name", key="schedule_input")
-    st.sidebar.button("➕ Add Schedule", key="add_work_schedule_button", on_click=add_work_schedule)
+    st.sidebar.header("📅 Work Scheduler")
+    st.sidebar.text_input("✏️ Work Schedule Name", key="schedule_input")
+    st.sidebar.button("➕ Add Work Schedule", key="add_work_schedule_button", on_click=add_work_schedule)
 
     ## File Saver
     st.sidebar.button("💾 Save File", key="save_file", on_click=save_file)
@@ -130,6 +130,35 @@ def initialise_debug_props(force=False):
             "express_file": None,
         }
 
+
+def parse_step_id(raw_value):
+    if raw_value is None:
+        return None
+
+    if isinstance(raw_value, int):
+        return raw_value
+
+    if isinstance(raw_value, float):
+        return int(raw_value) if raw_value.is_integer() else None
+
+    if isinstance(raw_value, str):
+        value = raw_value.strip()
+        if not value:
+            return None
+        if value.startswith("#"):
+            value = value[1:]
+
+        try:
+            return int(value)
+        except ValueError:
+            try:
+                float_value = float(value)
+                return int(float_value) if float_value.is_integer() else None
+            except ValueError:
+                return None
+
+    return None
+
 def get_object_data(fromId=None):
     def add_attribute(prop, key, value):
         if isinstance(value, tuple) and len(value) < 10:
@@ -148,16 +177,26 @@ def get_object_data(fromId=None):
             
     if session.BIMDebugProperties:
         initialise_debug_props(force=True)
-        step_id = 0
-        if fromId:
-            step_id = fromId
-        else:
-            step_id = int(session.object_id) if session.object_id else 0
+        raw_id = fromId if fromId not in (None, "") else session.object_id
+        step_id = parse_step_id(raw_id)
+        if step_id is None:
+            st.warning("Object ID must be a numeric STEP id (for example: 458 or #458).")
+            return
+
         debug_props = st.session_state.BIMDebugProperties
         debug_props["active_step_id"] = step_id
         crumb = {"name": str(step_id)}
         debug_props["step_id_breadcrumb"].append(crumb)
-        element = session.ifc_file.by_id(step_id)
+        try:
+            element = session.ifc_file.by_id(step_id)
+        except RuntimeError:
+            st.warning(f"No IFC entity found for STEP id {step_id}.")
+            return
+
+        if not element:
+            st.warning(f"No IFC entity found for STEP id {step_id}.")
+            return
+
         debug_props["inverse_attributes"] = []
         debug_props["inverse_references"] = []
         

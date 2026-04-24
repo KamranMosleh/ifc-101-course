@@ -7,8 +7,13 @@ import ifcopenshell
 def draw_3d_viewer():
     def get_current_ifc_file():
         return session.array_buffer
-    session.ifc_js_response = ifc_js_viewer(get_current_ifc_file())
-    st.sidebar.success("Visualiser loaded")
+    ifc_bytes = get_current_ifc_file()
+    if ifc_bytes and len(ifc_bytes) > 0:
+        st.write(f"Debug: Sending {len(ifc_bytes)} bytes to viewer")
+        session.ifc_js_response = ifc_js_viewer(ifc_bytes)
+        st.sidebar.success("Visualiser loaded")
+    else:
+        st.error("IFC file data not found in session. Please upload a file on the Homepage first.")
 
 def get_psets_from_ifc_js():
     if session.ifc_js_response:

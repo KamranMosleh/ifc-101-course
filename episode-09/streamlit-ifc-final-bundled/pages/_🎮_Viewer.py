@@ -13,7 +13,7 @@ import streamlit.components.v1 as components                                #
 # and that the code to display that component is in the "frontend" folder   #
 frontend_dir = (Path(__file__).parent / "frontend-viewer").absolute()       #
 _component_func = components.declare_component(                             #
-	"ifc_js_viewer", path=str(frontend_dir)                                 #
+    "ifc_js_viewer_bundled", path=str(frontend_dir)                         #
 )                                                                           #
 #                                                                           #
 # Create the python function that will be called                            #
@@ -30,8 +30,13 @@ def ifc_js_viewer(                                                          #
 def draw_3d_viewer():
     def get_current_ifc_file():
         return session.array_buffer
-    session.ifc_js_response = ifc_js_viewer(get_current_ifc_file())
-    st.sidebar.success("Visualiser loaded")
+    ifc_bytes = get_current_ifc_file()
+    if ifc_bytes and len(ifc_bytes) > 0:
+        st.write(f"Debug: Sending {len(ifc_bytes)} bytes to viewer")
+        session.ifc_js_response = ifc_js_viewer(ifc_bytes)
+        st.sidebar.success("Visualiser loaded")
+    else:
+        st.error("IFC file data not found in session. Please upload a file on the Homepage first.")
 
 def get_psets_from_ifc_js():
     if session.ifc_js_response:

@@ -79,8 +79,76 @@ function sendValue(value) {
   Streamlit.setComponentValue(value)
 }
 
+function toUint8Array(payload) {
+  if (!payload) return null;
+
+  if (payload instanceof Uint8Array) {
+    return payload;
+  }
+
+  if (payload instanceof ArrayBuffer) {
+    return new Uint8Array(payload);
+  }
+
+  if (ArrayBuffer.isView(payload)) {
+    return new Uint8Array(
+      payload.buffer,
+      payload.byteOffset,
+      payload.byteLength
+    );
+  }
+
+  if (Array.isArray(payload)) {
+    return new Uint8Array(payload);
+  }
+
+  if (typeof payload === "string") {
+    return new TextEncoder().encode(payload);
+  }
+
+  if (payload.type === "Buffer" && Array.isArray(payload.data)) {
+    return new Uint8Array(payload.data);
+  }
+
+  if (typeof payload === "object" && Array.isArray(payload.data)) {
+    return new Uint8Array(payload.data);
+  }
+
+  if (typeof payload === "object" && Number.isInteger(payload.length)) {
+    const values = [];
+    for (let i = 0; i < payload.length; i += 1) {
+      values.push(payload[i] || 0);
+    }
+    return new Uint8Array(values);
+  }
+
+  return null;
+}
+
+function showViewerError(message) {
+  let errorBox = document.getElementById("viewer-error");
+  if (!errorBox) {
+    errorBox = document.createElement("div");
+    errorBox.id = "viewer-error";
+    errorBox.style.position = "fixed";
+    errorBox.style.top = "12px";
+    errorBox.style.left = "12px";
+    errorBox.style.zIndex = "9999";
+    errorBox.style.maxWidth = "80vw";
+    errorBox.style.padding = "10px 12px";
+    errorBox.style.background = "rgba(215, 58, 73, 0.92)";
+    errorBox.style.color = "#fff";
+    errorBox.style.borderRadius = "8px";
+    errorBox.style.fontFamily = "sans-serif";
+    errorBox.style.fontSize = "14px";
+    document.body.appendChild(errorBox);
+  }
+  errorBox.textContent = message;
+}
+
 function setup(){
   //BASIC THREE JS SCENE, CAMERA, LIGHTS, MOUSE CONTROLS
+    console.log("🔧 Setup: Creating Three.js scene...");
     window.scene = new Scene();
     const ifc = ifcLoader.ifcManager;
 
@@ -89,6 +157,7 @@ function setup(){
     camera.position.z = 15;
     camera.position.y = 13;
     camera.position.x = 8;
+    console.log("📷 Setup: Camera created, position:", camera.position);
   
     //Creates the lights of the scene
     const lightColor = 0xffffff;
@@ -103,9 +172,11 @@ function setup(){
   
     //Sets up the renderer, fetching the canvas of the HTML
     const threeCanvas = document.getElementById("three-canvas");
+    console.log("🎨 Setup: Canvas element:", threeCanvas);
     const renderer = new WebGLRenderer({ canvas: threeCanvas, alpha: true });
     renderer.setSize(size.width, size.height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    console.log("🖥️ Setup: Renderer created, size:", size.width, "x", size.height);
   
     //Creates grids and axes in the window.scene
     const grid = new GridHelper(50, 30);
@@ -138,14 +209,14 @@ function setup(){
     });
   
     //Sets up the IFC loading
-
-    ifc.setWasmPath("./vendor/IFC/");
+    console.log("⚙️ Setup: WASM path set to ./vendor/IFC/");
 
     ifc.setupThreeMeshBVH(
       computeBoundsTree,
       disposeBoundsTree,
       acceleratedRaycast
       );
+    console.log("✅ Setup: Complete. Waiting for IFC model...");
   
     // SELECTOR EXAMPLE
     const raycaster = new Raycaster();
@@ -226,10 +297,21 @@ function setup(){
       }
 }
 
-async function sigmaLoader (url, ifcLoader){
-  const ifcModel = await ifcLoader.ifcManager.parse(url.buffer)
-  ifcModels.push(ifcModel.mesh)
-  window.scene.add(ifcModel.mesh)
+  async function sigmaLoader (url, ifcLoader){
+    console.log("📦 Loader: Converting payload to Uint8Array...");
+    const ifcBytes = toUint8Array(url);
+    if (!ifcBytes || ifcBytes.length === 0) {
+      throw new Error("IFC payload was empty or not a supported binary format.");
+    }
+    console.log("📦 Loader: Payload ready, " + ifcBytes.length + " bytes");
+
+    console.log("🔄 Loader: Parsing IFC model...");
+    const ifcModel = await ifcLoader.ifcManager.parse(ifcBytes)
+    console.log("✨ Loader: Parse complete. Model:", ifcModel);
+    ifcModels.push(ifcModel.mesh)
+    console.log("📍 Loader: Adding mesh to scene...");
+    window.scene.add(ifcModel.mesh)
+    console.log("🎉 Loader: Model added to scene!");
 }
     
 /**
@@ -239,10 +321,22 @@ async function sigmaLoader (url, ifcLoader){
  */
 
  async function loadURL(event) {
-  if (!window.rendered) {
-    const {url} = event.detail.args;
+  if (window.rendered) {
+    return;
+  }
+
+  if (!event || !event.detail || !event.detail.args) {
+    return;
+  }
+
+  const {url} = event.detail.args;
+  try {
     await sigmaLoader(url, ifcLoader);
     window.rendered = true
+  } catch (error) {
+    const message = `Failed to load IFC model: ${error?.message || "Unknown error"}`;
+    console.error(message, error);
+    showViewerError(message);
   }
 }
 
