@@ -1,4 +1,4 @@
-# Streamlit IFC Page Guide
+# Streamlit IFC Pages Guide
 
 This guide explains what each page in the app does, where each tab gets its information, and how the app uses ifcOpenShell under the hood.
 
