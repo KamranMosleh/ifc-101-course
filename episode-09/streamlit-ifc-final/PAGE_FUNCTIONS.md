@@ -1,5 +1,7 @@
 # Streamlit IFC Pages Guide
 
+> A web-based IFC model inspector that lets engineers upload an IFC file and explore its geometry, element quantities, raw IFC entity data (IFC STEP entity data), and embedded schedule and cost structures through a single Streamlit interface.
+
 This guide explains what each page in the app does, where each tab gets its information, and how the app uses ifcOpenShell under the hood.
 
 ## Table of Contents
